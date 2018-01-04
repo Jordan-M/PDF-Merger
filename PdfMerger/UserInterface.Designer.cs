@@ -118,6 +118,7 @@
             this.MinimumSize = new System.Drawing.Size(300, 200);
             this.Name = "UserInterface";
             this.Text = "Pdf Merge Tool";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.UserInterface_FormClosing);
             this.ResumeLayout(false);
             this.PerformLayout();
 

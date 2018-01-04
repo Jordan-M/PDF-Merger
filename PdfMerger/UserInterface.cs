@@ -11,6 +11,8 @@ namespace PdfMerger
 {
     public partial class UserInterface : Form
     {
+        private bool _operationInProgress = false;
+
         public UserInterface()
         {
             InitializeComponent();
@@ -21,6 +23,7 @@ namespace PdfMerger
             if (uxSource.Text != String.Empty && uxDest.Text != String.Empty)
             {
                 ResetUI();
+                _operationInProgress = true;
 
                 DirectoryInfo dir = new DirectoryInfo(uxSource.Text);
                 Task<bool> test = await Task.Factory.StartNew(() => MergeFolder(dir, uxDest.Text));
@@ -32,6 +35,7 @@ namespace PdfMerger
                     MessageBox.Show("Finished merging PDFs!");
                 }
 
+                _operationInProgress = false;
                 ResetUI();
             }
         }
@@ -169,6 +173,18 @@ namespace PdfMerger
             return mergedPDF;
         }
 
+        private void UserInterface_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.WindowsShutDown) return;
+            if (_operationInProgress)
+            {
+                DialogResult result = MessageBox.Show("An operation is currently in progress, are you sure you would like to quit?", "Confirm exit", MessageBoxButtons.YesNo);
 
+                if (result == DialogResult.No)
+                    e.Cancel = true;
+                else
+                    return;
+            }
+        }
     }
 }
