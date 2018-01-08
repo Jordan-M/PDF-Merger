@@ -16,7 +16,6 @@ namespace PdfMerger
         public UserInterface()
         {
             InitializeComponent();
-            MessageBox.Show("Final test update... Hopefully...");
         }
 
         private void uxSourceButton_Click(object sender, EventArgs e)
