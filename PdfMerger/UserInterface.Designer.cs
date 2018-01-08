@@ -37,13 +37,14 @@
             this.uxDest = new System.Windows.Forms.TextBox();
             this.uxDestBrowser = new System.Windows.Forms.FolderBrowserDialog();
             this.uxProgressLabel = new System.Windows.Forms.Label();
+            this.uxUseFolderSchema = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // uxMergeButton
             // 
-            this.uxMergeButton.Location = new System.Drawing.Point(12, 126);
+            this.uxMergeButton.Location = new System.Drawing.Point(138, 126);
             this.uxMergeButton.Name = "uxMergeButton";
-            this.uxMergeButton.Size = new System.Drawing.Size(260, 23);
+            this.uxMergeButton.Size = new System.Drawing.Size(134, 23);
             this.uxMergeButton.TabIndex = 0;
             this.uxMergeButton.Text = "Merge";
             this.uxMergeButton.UseVisualStyleBackColor = true;
@@ -101,11 +102,22 @@
             this.uxProgressLabel.TabIndex = 6;
             this.uxProgressLabel.Text = "0/0";
             // 
+            // uxUseFolderSchema
+            // 
+            this.uxUseFolderSchema.AutoSize = true;
+            this.uxUseFolderSchema.Location = new System.Drawing.Point(13, 130);
+            this.uxUseFolderSchema.Name = "uxUseFolderSchema";
+            this.uxUseFolderSchema.Size = new System.Drawing.Size(119, 17);
+            this.uxUseFolderSchema.TabIndex = 7;
+            this.uxUseFolderSchema.Text = "Use Folder Schema";
+            this.uxUseFolderSchema.UseVisualStyleBackColor = true;
+            // 
             // UserInterface
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 161);
+            this.Controls.Add(this.uxUseFolderSchema);
             this.Controls.Add(this.uxProgressLabel);
             this.Controls.Add(this.uxDest);
             this.Controls.Add(this.uxSource);
@@ -135,6 +147,7 @@
         private System.Windows.Forms.TextBox uxDest;
         private System.Windows.Forms.FolderBrowserDialog uxDestBrowser;
         private System.Windows.Forms.Label uxProgressLabel;
+        private System.Windows.Forms.CheckBox uxUseFolderSchema;
     }
 }
 

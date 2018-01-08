@@ -18,28 +18,6 @@ namespace PdfMerger
             InitializeComponent();
         }
 
-        private async void uxMergeButton_ClickAsync(object sender, EventArgs e)
-        {
-            if (uxSource.Text != String.Empty && uxDest.Text != String.Empty)
-            {
-                ResetUI();
-                _operationInProgress = true;
-
-                DirectoryInfo dir = new DirectoryInfo(uxSource.Text);
-                Task<bool> test = await Task.Factory.StartNew(() => MergeFolder(dir, uxDest.Text));
-
-                if (test.Result)
-                {
-                    RemoveEmptyFolders(Path.Combine(uxDest.Text, dir.Name));
-                    uxProgressLabel.Text = "Cleaning folders...";
-                    MessageBox.Show("Finished merging PDFs!");
-                }
-
-                _operationInProgress = false;
-                ResetUI();
-            }
-        }
-
         private void uxSourceButton_Click(object sender, EventArgs e)
         {
             if (uxSourceBrowser.ShowDialog() == DialogResult.OK)
@@ -56,19 +34,66 @@ namespace PdfMerger
             }
         }
 
+        private async void uxMergeButton_ClickAsync(object sender, EventArgs e)
+        {
+            if (uxSource.Text != String.Empty && uxDest.Text != String.Empty)
+            {
+                ResetUI();
+                _operationInProgress = true;
+
+                DirectoryInfo dir = new DirectoryInfo(uxSource.Text);
+                Task<bool> test = await Task.Factory.StartNew(() => MergeFolder(dir, uxDest.Text));
+
+                if (test.Result)
+                {
+                    uxProgressLabel.Text = "Cleaning folders...";
+                    RemoveEmptyFolders(Path.Combine(uxDest.Text, dir.Name));
+                    MessageBox.Show("Finished merging PDFs!");
+                }
+
+                _operationInProgress = false;
+                ResetUI();
+            }
+        }
+
+        private void UserInterface_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // We don't want to stop windows from trying to close down
+            if (e.CloseReason == CloseReason.WindowsShutDown) return;
+
+            if (_operationInProgress)
+            {
+                DialogResult result = MessageBox.Show("An operation is currently in progress, are you sure you would like to quit?", "Confirm exit", MessageBoxButtons.YesNo);
+
+                if (result == DialogResult.No)
+                    e.Cancel = true;
+                else
+                    return;
+            }
+        }
+
+        /// <summary>
+        /// Toggles all the UI buttons, and resets the progress bar
+        /// </summary>
         private void ResetUI()
         {
             ToggleUIButtons();
             ResetProgress();
         }
 
+        /// <summary>
+        /// Resets the progress bar to its idle state
+        /// </summary>
         private void ResetProgress()
         {
             uxProgressBar.Value = 0;
-            uxProgressBar.Maximum = CalculateNumFiles(uxSource.Text, true);
+            uxProgressBar.Maximum = FileHelper.CalculateNumFiles(uxSource.Text, true);
             uxProgressLabel.Text = "0/" + uxProgressBar.Maximum;
         }
 
+        /// <summary>
+        /// Sets all buttons to the opposite enabled status
+        /// </summary>
         private void ToggleUIButtons()
         {
             uxSourceButton.Enabled = !uxSourceButton.Enabled;
@@ -76,12 +101,11 @@ namespace PdfMerger
             uxMergeButton.Enabled = !uxMergeButton.Enabled;
         }
 
-        public static int CalculateNumFiles(string location, bool searchSubfolders)
-        {
-            SearchOption option = (searchSubfolders) ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            return Directory.GetFiles(location, "*.*", option).Length;
-        }
 
+        /// <summary>
+        /// Removes all empty folders in the root folder
+        /// </summary>
+        /// <param name="root">Path to folder you want to delete the empty folders of</param>
         private void RemoveEmptyFolders(string root)
         {
             foreach (var directory in Directory.GetDirectories(root))
@@ -94,6 +118,12 @@ namespace PdfMerger
             }
         }
 
+        /// <summary>
+        /// Merges all the pdfs in a specified folder
+        /// </summary>
+        /// <param name="root">Folder of pdfs to merge</param>
+        /// <param name="savePath">The location where you want to save the pdfs</param>
+        /// <returns>True if the operation succeded false otherwise</returns>
         private async Task<bool> MergeFolder(DirectoryInfo root, string savePath)
         {
             savePath = Path.Combine(savePath, root.Name);
@@ -126,11 +156,20 @@ namespace PdfMerger
             {
                 if (files.Count() > 0)
                 {
-                    PdfDocument pdf = MergePdfs(files);
-
                     string realSavePath = savePath.Substring(0, savePath.LastIndexOf('\\'));
 
-                    pdf.Save(Path.Combine(realSavePath, root.Name + ".pdf"));
+                    PdfDocument pdf = MergePdfs(files);
+
+                    if (uxUseFolderSchema.Checked)
+                    {
+                        string siteName = realSavePath.Substring(realSavePath.LastIndexOf('\\') + 1);
+                        pdf.Save(Path.Combine(realSavePath, String.Format("{0} - {1}.pdf", siteName, root.Name)));
+                    }
+                    else
+                    {
+                        pdf.Save(Path.Combine(realSavePath, String.Format("{0}.pdf", root.Name)));
+                    }
+
                 }
 
                 subDirs = root.GetDirectories();
@@ -144,47 +183,43 @@ namespace PdfMerger
             return true;
         }
 
+        /// <summary>
+        /// Merges pdfs into one file
+        /// </summary>
+        /// <param name="pdfFilePaths">An array contating the paths of the pdf files</param>
+        /// <returns>A single pdf created from all the pdfs in pdfFilePaths</returns>
         private PdfDocument MergePdfs(FileInfo[] pdfFilePaths)
         {
             // Create the PDF 
-            PdfDocument mergedPDF = new PdfDocument();
-
-            foreach (FileInfo pdf in pdfFilePaths)
+            using (PdfDocument mergedPDF = new PdfDocument())
             {
-                PdfDocument inputDoc = PdfReader.Open(pdf.FullName, PdfDocumentOpenMode.Import);
-
-                // We shouldn't need this because all of the pages are singles, but I am keeping it for more portability
-                for (int i = 0; i < inputDoc.PageCount; i++)
+                foreach (FileInfo pdf in pdfFilePaths)
                 {
-                    PdfPage page = inputDoc.Pages[i];
-                    mergedPDF.AddPage(page);
-
-                    if (InvokeRequired)
+                    using (PdfDocument inputDoc = PdfReader.Open(pdf.FullName, PdfDocumentOpenMode.Import))
                     {
-                        BeginInvoke(new Action(() =>
+                        // We shouldn't need this because all of the pages are singles, but I am keeping it for more portability
+                        for (int i = 0; i < inputDoc.PageCount; i++)
                         {
-                            uxProgressBar.Value++;
-                            uxProgressLabel.Text = uxProgressBar.Value + "/" + uxProgressBar.Maximum;
-                        }));
+                            PdfPage page = inputDoc.Pages[i];
+                            mergedPDF.AddPage(page);
+                            page.Close();
+                        }
+
+                        if (InvokeRequired)
+                        {
+                            BeginInvoke(new Action(() =>
+                            {
+                                uxProgressBar.Value += inputDoc.PageCount;
+                                uxProgressLabel.Text = uxProgressBar.Value + "/" + uxProgressBar.Maximum;
+                            }));
+                        }
                     }
                 }
-            }
 
-            return mergedPDF;
-        }
-
-        private void UserInterface_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.WindowsShutDown) return;
-            if (_operationInProgress)
-            {
-                DialogResult result = MessageBox.Show("An operation is currently in progress, are you sure you would like to quit?", "Confirm exit", MessageBoxButtons.YesNo);
-
-                if (result == DialogResult.No)
-                    e.Cancel = true;
-                else
-                    return;
+                return mergedPDF;
             }
         }
+
+
     }
 }
